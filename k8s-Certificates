@@ -1,0 +1,93 @@
+
+# V0.1 - 10192023
+
+# Location of kubernetes Manifests File
+cd /etc/kubernetes/manifests/
+
+# Sample Output
+controlplane /etc/kubernetes/manifests ➜  ls
+etcd.yaml  kube-apiserver.yaml  kube-controller-manager.yaml  kube-scheduler.yaml
+
+# What is the Common Name (CN) configured on the Kube API Server Certificate?
+CN = kube-apiserver
+
+# To find common name of apiserver & Certificate Validity - its 01 Year
+openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text -noout
+
+# To find common name of etcd server & Certificate Validity - its 01 Year
+openssl x509 -in /etc/kubernetes/pki/etcd/server.crt  -text -noout
+
+# To find the certificate validity of root CA - its 10 Years
+openssl x509 -in /etc/kubernetes/pki/ca.crt -text -noout
+
+
+# Issue
+crictl ps -a
+crictl ps -a | grep kube-apiserver
+# Check logs of kube-apiserver pod
+crictl logs 2166c20fc38d1
+
+# Create a CertificateSigningRequest 
+cat <<EOF | kubectl apply -f -
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: akshay
+spec:
+  request: 
+  LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZqQ0NBVDRDQVFBd0VURVBNQTBHQTFVRUF3d0dZV3R6YUdGNU1JSUJJakFOQmdrcWhraUc5dzBCQVFFRgpBQU9DQVE4QU1JSUJDZ0tDQVFFQXIxOVlqR1BJcTl0SGlWSzRoblhFWDV4MEpvcTAzOCtOUkhYNGdCRGdSeG9ECk8zTkR5OGJlaWg2d3hFREZwck92VXBGZjcvcVdMdXUzMGtOYklMaHVZTmIzWmtldm5TZHdZWHUvSlpSN3UyTmwKd0Q0ODg3SzZ5SFdSemw1dmFvVmhmbEVWeUtsaGcyRkkzWVIxc0V4aXhCcGVKTk56QWxWb2VDQlQwY3VOaXlYUApoaUozRHJUQVZaL25ielZZNjl1eFpxZ0VpZDkzYWlkaWpVM0NOa2Z2NCsrNTVWMCtVY1BEdUNZMk10Mit6ZHhMClBpR2lDSmtHN1ltRlJzS2NsVVdXRlYwR3ZXcEpNeUZlcmRGdlUvRUpGWHVNaFBmMnppcnFIcVJiZnVWUm4yaTIKWVowYVV5TGlBN24xK0pvR2xIbVdkY3RhNVpDbEVzRWsva2poK21PR1V3SURBUUFCb0FBd0RRWUpLb1pJaHZjTgpBUUVMQlFBRGdnRUJBRENjcUVJcmllRlFlMFdoVEM1UlE0TmNldDA2cGpQOTNjeE5KdWhWb2dLV3ZqUk9CSlU3CjJHQWdOVXgxRkIyNS9CbHVTWnNSSy9BWEhjQVlKc1RWcDFKNlV2SnUrV3ZIVHQ5cUtCcUI3ZGpkZUVUbTFiS3oKZTM3NGN4dFFqRElHL0ViR0hDS2NIT3pYeklnZXE2ZThMVFZoQm9WZUpFY0lWOFR6alVYcWt5cGF6bEcwQkZ1NgpwSjNNM2lYeWRTWGxwSk1SOXJTWVNNUEMyVjdXWnlBQkowSFJHL0tmaDN4L3Q0QVArYnJOYU04dVVWaUZUQlpOCmhZTDJWSzZwWHFpeXFaNmRsbTFJZFRtZnNRNDRDVzJpRmxYQWtobjFtS1ZvWEJKM0lKZ1UwbStGM3NuUHNBVFMKd0RRNEtzL3hjU0ZIdmNBci9haEJwWVpVNDBMK0dscS9ubkk9Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 86400
+  usages:
+  - client auth
+EOF
+
+
+# create yaml file for user for example akshay
+
+cat akshay.csr | base64 -w 0
+Copy the output to spec in akashy.yaml file
+
+# Check the CSR Status
+kubectl get csr
+
+# approve the status of Pending CSR
+kubectl certificate approve akshay
+
+# Output will be like this
+kubectl get csr
+NAME        AGE     SIGNERNAME                                    REQUESTOR                  REQUESTEDDURATION   CONDITION
+akshay      3m29s   kubernetes.io/kube-apiserver-client           kubernetes-admin           24h                 Approved,Issued
+
+
+# To check the details, of raised CSR 
+kubectl get csr agent-smith -o yaml
+
+# output will be like this
+ubectl get csr agent-smith -o yaml
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  creationTimestamp: "2023-10-18T03:28:43Z"
+  name: agent-smith
+  resourceVersion: "3001"
+  uid: b237d2c4-adc8-4872-ad21-2d0fc09abe62
+spec:
+  groups:
+  - system:masters
+  - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1dEQ0NBVUFDQVFBd0V6RVJNQThHQTFVRUF3d0libVYzTFhWelpYSXdnZ0VpTUEwR0NTcUdTSWIzRFFFQgpBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRRE8wV0pXK0RYc0FKU0lyanBObzV2UklCcGxuemcrNnhjOStVVndrS2kwCkxmQzI3dCsxZUVuT041TXVxOTlOZXZtTUVPbnJEVU8vdGh5VnFQMncyWE5JRFJYall5RjQwRmJtRCs1eld5Q0sKeTNCaWhoQjkzTUo3T3FsM1VUdlo4VEVMcXlhRGtuUmwvanYvU3hnWGtvazBBQlVUcFdNeDRCcFNpS2IwVSt0RQpJRjVueEF0dE1Wa0RQUTdOYmVaUkc0M2IrUVdsVkdSL3o2RFdPZkpuYmZlek90YUF5ZEdMVFpGQy93VHB6NTJrCkVjQ1hBd3FDaGpCTGt6MkJIUFI0Sjg5RDZYYjhrMzlwdTZqcHluZ1Y2dVAwdEliT3pwcU52MFkwcWRFWnB3bXcKajJxRUwraFpFV2trRno4MGxOTnR5VDVMeE1xRU5EQ25JZ3dDNEdaaVJHYnJBZ01CQUFHZ0FEQU5CZ2txaGtpRwo5dzBCQVFzRkFBT0NBUUVBUzlpUzZDMXV4VHVmNUJCWVNVN1FGUUhVemFsTnhBZFlzYU9SUlFOd0had0hxR2k0CmhPSzRhMnp5TnlpNDRPT2lqeWFENnRVVzhEU3hrcjhCTEs4S2czc3JSRXRKcWw1ckxaeTlMUlZyc0pnaEQ0Z1kKUDlOTCthRFJTeFJPVlNxQmFCMm5XZVlwTTVjSjVURjUzbGVzTlNOTUxRMisrUk1uakRRSjdqdVBFaWM4L2RoawpXcjJFVU02VWF3enlrcmRISW13VHYybWxNWTBSK0ROdFYxWWllKzBIOS9ZRWx0K0ZTR2poNUw1WVV2STFEcWl5CjRsM0UveTNxTDcxV2ZBY3VIM09zVnBVVW5RSVNNZFFzMHFXQ3NiRTU2Q0M1RGhQR1pJcFVibktVcEF3a2ErOEUKdndRMDdqRytocGtueG11RkFlWHhnVXdvZEFMYUo3anUvVERJY3c9PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0K
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+  username: agent-x
+status: {}
+
+# To reject the undesired or illegal CSR
+kubectl certificate deny agent-smith
+
+# To delete the rejected CSR
+kubectl delete csr agent-smith
+

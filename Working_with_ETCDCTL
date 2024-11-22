@@ -1,0 +1,96 @@
+# Working with ETCDCTL
+# etcdctl is a command line client for etcd.
+# In all our Kubernetes Hands-on labs, the ETCD key-value database is deployed as a static pod on the master. The version used is v3.
+# To make use of etcdctl for tasks such as back up and restore, make sure that you set the ETCDCTL_API to 3.
+# You can do this by exporting the variable ETCDCTL_API prior to using the etcdctl client. This can be done as follows:
+export ETCDCTL_API=3
+
+# On the Master Node:
+export ETCDCTL_API=3
+etcdctl version
+
+# To see all the options for a specific sub-command, make use of the -h or –help flag.
+# For example, if you want to take a snapshot of etcd, use:
+
+etcdctl snapshot save -h and keep a note of the mandatory global options.
+
+Since our ETCD database is TLS-Enabled, the following options are mandatory:
+
+–cacert                verify certificates of TLS-enabled secure servers using this CA bundle
+
+–cert                    identify secure client using this TLS certificate file
+
+–endpoints=[127.0.0.1:2379] This is the default as ETCD is running on master node and exposed on localhost 2379.
+
+–key                  identify secure client using this TLS key file
+
+# My Lab Cluster 1.28.2
+
+# Command:
+      etcd
+      --advertise-client-urls=https://192.168.100.101:2379
+      --cert-file=/etc/kubernetes/pki/etcd/server.crt
+      --client-cert-auth=true
+      --data-dir=/var/lib/etcd
+      --experimental-initial-corrupt-check=true
+      --experimental-watch-progress-notify-interval=5s
+      --initial-advertise-peer-urls=https://192.168.100.101:2380
+      --initial-cluster=controller0.13infotech.com=https://192.168.100.101:2380
+      --key-file=/etc/kubernetes/pki/etcd/server.key
+      --listen-client-urls=https://127.0.0.1:2379,https://192.168.100.101:2379
+      --listen-metrics-urls=http://127.0.0.1:2381
+      --listen-peer-urls=https://192.168.100.101:2380
+      --name=controller0.13infotech.com
+      --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+      --peer-client-cert-auth=true
+      --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
+      --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+      --snapshot-count=10000
+      --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+
+# Image
+Image:         registry.k8s.io/etcd:3.5.9-0
+
+# to Install etcd client on controller0
+sudo apt install etcd-client
+
+# Snapshot command to Backup etcd
+ETCDCTL_API=3
+etcdctl snapshot save --endpoints=127.0.0.1:2379 \
+--cacert=/etc/kubernetes/pki/etcd/ca.crt \
+--cert=/etc/kubernetes/pki/etcd/server.crt \
+--key=/etc/kubernetes/pki/etcd/server.key \
+/opt/snapshot-pre-boot.db
+
+ls 
+snapshot.db
+
+# The output will be like as below
+# 2023-10-11 10:23:57.168607 I | clientv3: opened snapshot stream; downloading
+# 2023-10-11 10:23:57.255926 I | clientv3: completed snapshot read; closing
+# Snapshot saved at /opt/snapshot-pre-boot.db
+
+# to restore the backup from snapshot
+etcdctl snapshot restore --data-dir /var/lib/etcd-from-backup /opt/snapshot-pre-boot.db
+
+
+# Lastly do the changes in manifest file 
+# root@controller0:/opt# cd /etc/kubernetes/manifests/
+# root@controller0:/etc/kubernetes/manifests# vi etcd.yaml
+
+volumes:
+  - hostPath:
+      path: /etc/kubernetes/pki/etcd
+      type: DirectoryOrCreate
+    name: etcd-certs
+  - hostPath:
+      path: /var/lib/etcd-from-backup
+      type: DirectoryOrCreate
+    name: etcd-data
+
+
+# then change the etcd configuration file
+--data-dir=/var/lib/etcd-from-backup
+systemctl daemon-reload
+service etcd restart
+service kube-apiserver start

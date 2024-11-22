@@ -1,0 +1,53 @@
+ # version 0.1 - 10102023
+# These are the commands used to manage GitHub Repositories
+
+
+# Install git from this website 
+https://git-scm.com/
+# For MacOS, please visit below link
+https://git-scm.com/download/mac
+# Install brew on your MacOS
+https://brew.sh/
+# then install git through Homebrew
+brew install git
+# create your github acocunt
+https://github.com/
+# Create Github Fine-grained personal access tokens
+# Profile > Settings > Developer Settings > Personal access tokens > Fine Grained Tokens
+https://github.com/settings/tokens?type=beta
+# Give appropirate access and set the validity of token. you can set up to 01 year of validity at the time of writing this procedure
+
+# To Add the repository on your local machine
+# make sure that you have created the repository manually first on your github account
+# Example https://github.com/jasbirsohi/os.git
+# Then clone this repository to your laptop
+# choose the location or directory where you want to clone this repository
+git clone https://github.com/jasbirsohi/os.git
+
+# To add remote Github Origin
+git remote add origin https://github.com/jasbirsohi/k8s.git
+# message will print like "error: remote origin already exists"
+# Now setup the authentication
+git remote set-url origin https://type_git_hub_token@github.com/USERNAME/REPO_NAME
+# For example
+git remote set-url origin https://type_git_hub_token@github.com/jasbirsohi/os.git
+
+# Now add the new files, they will be shown as untracked files
+# To add the newly untracked files to next stage
+git add .
+# or if you want to choose individual file
+git add <filename>
+# To check status of Git Activity Status - Always use this command to check the status after every change.
+git status
+# To add tag while commiting the changes
+git commit -m "uploading v0.1 < Message that you want to publish 10042023>"
+# To check status of Git Activity Status after tagging the commit
+git status
+# To push the commit to remote Github repository
+git push -u origin main
+# To check status of Git Activity Status after push to remote origin
+git status
+
+# If you want to reverse the tracked file to untracked file
+# (use "git restore --staged <file>..." to unstage)
+

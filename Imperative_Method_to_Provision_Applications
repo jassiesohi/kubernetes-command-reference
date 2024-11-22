@@ -1,0 +1,484 @@
+
+# Version 0.4 -10242023
+# Imperative method to create different applications
+
+# Reference:
+# https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+# https://kubernetes.io/docs/reference/kubectl/conventions/
+
+# Location of Static File Manifests File
+/etc/kubernetes/manifests/
+# Location of the Kubelet config File
+/var/lib/kubelet/config.yaml
+
+# To see kubectl config view
+kubectl config view
+
+# If you have multiple clusters and you want to change the context
+kubectl config use-context cluster1
+kubectl config use-context cluster2
+kubectl config use-context cluster3
+
+# to Get the Health Status of Control Plane Compponents
+kubectl get componentstatuses
+
+# How to set alias for kubectl
+alias k=kubectl
+
+Kubectl autocomplete
+BASH
+source <(kubectl completion bash) # set up autocomplete in bash into the current shell, bash-completion package should be installed first.
+echo "source <(kubectl completion bash)" >> ~/.bashrc # add autocomplete permanently to your bash shell.
+You can also use a shorthand alias for kubectl that also works with completion:
+
+alias k=kubectl
+complete -o default -F __start_kubectl k
+
+# ZSH - on MAC OS Command Line
+# you will encounter this error
+/dev/fd/12:18: command not found: compdef
+# Add these two lines
+autoload -Uz compinit
+compinit
+# for error
+zsh: command not found: complete
+# add these lines
+autoload bashcompinit
+bashcompinit
+# the add 
+alias k=kubectl
+complete -o default -F __start_kubectl k
+
+# then add auto completion
+source <(kubectl completion zsh)  # set up autocomplete in zsh into the current shell
+echo '[[ $commands[kubectl] ]] && source <(kubectl completion zsh)' >> ~/.zshrc # add autocomplete permanently to your zsh shell
+# How to check if taint is set on any nodes
+k describe node | grep Taints
+
+# Backup - Resource Configs
+kubectl get all --all-namespaces -o yaml > all-deploy-services.yaml
+
+
+# if you want to drain the node
+k drain controller0 --ignore-daemonsets
+
+
+# Setting the namespace preference:
+
+# Note: 
+# 1. You can permanently save the namespace for all subsequent kubectl commands in that context.
+# 2. --minify=false: Remove all information not used by current-context from the output
+
+# Syntax: 
+kubectl config set-context --current --namespace=<insert-namespace-name-here>
+# Provided alias k=kubectl is set else type full syntax as kubectl
+k config set-context --current --namespace=dev
+k config view --minify | grep namespace:
+k get pods
+
+# Imperative method to provision httpd apache application
+# Provided alias k=kubectl is set
+
+# Create namespace dev
+k create ns dev
+# Check if any exisiting pods are present in newly created namespace which is dev
+k get po -n=dev
+# To Check the pods current status in all namespaces
+kubectl get pods -A
+# If we need to create just 01 pod only 
+k run httpd1 --image=httpd -n=dev
+k get po -n=dev
+
+# If we need to create deployment of httpd (Apache Server)
+k create deploy httpd1 --image=httpd --replicas=3 -n=dev
+k get po -n=dev
+# To check the Pods Status on cluster wide ndes
+k get po -n=dev -o wide
+# to see yaml output you cam try below command
+k get po -n=dev -o yaml
+# Exposing Service through NodePort 80 without selectors 
+k expose deploy httpd1 --type=NodePort --port=80 -n=dev
+
+
+# When you want to check clusterip connectivity within POD Network
+# kubectl run temp --image=curlimages/curl -i --rm --restart=Never --curl svc name
+kubectl run temp --image=curlimages/curl -i --rm --restart=Never --curl nginx-app
+
+# To check endpoints
+kubectl get ep
+
+# To check po (pods),svc (service),ep (endpoints) all togther 
+kubectl get po,svc,ep -o wide
+
+# Deleting Imperative Commands
+
+# First delete the svc 
+k delete svc httpd1 -n=dev
+# Second delete pods deployment
+k delete deploy httpd1 -n=dev
+# Delete if you have any standalone pod made without deployment method
+k get po -A
+k get po -n=dev
+k delete po httpd
+
+# If you willing to delete dev namespace in the end
+k get ns
+k delete ns dev
+k get ns
+k get po
+
+# New Section
+
+# Imperative method to provision nginx application
+# Provided namespace is still dev
+
+# Check if any exisiting pods are present in newly created namespace which is dev
+k get po -n=dev
+# To Check the pods current status in all namespaces
+kubectl get pods -A
+# If we need to create just 01 pod only 
+k run nginx1 --image=nginx -n=dev
+k get po -n=dev
+
+# If we need to create deployment of httpd (Apache Server)
+k create deploy nginx1 --image=nginx --replicas=3 -n=dev
+k get po -n=dev
+# To check the Pods Status on cluster wide ndes
+k get po -n=dev -o wide
+# to see yaml output you cam try below command
+k get po -n=dev -o yaml
+# Exposing Service through NodePort 80 without selectors 
+k expose deploy nginx1 --type=NodePort --port=80 -n=dev
+
+# Deleting Imperative Commands
+
+# First delete the svc 
+k delete svc nginx1 -n=dev
+# Second delete pods deployment
+k delete deploy nginx1 -n=dev
+# Delete if you have any standalone pod made without deployment method
+k get po -A
+k get po -n=dev
+k delete po nginx
+
+# If you willing to delete dev namespace in the end
+k get ns
+k delete ns dev
+k get ns
+k get po
+
+# New Section
+
+# Certification Tips – Imperative Commands with Kubectl
+# While you would be working mostly the declarative way – using definition files, imperative commands can help in getting one time tasks done quickly, as well as generate a definition template easily. This would help save considerable amount of time during your exams.
+
+# Before we begin, familiarize with the two options that can come in handy while working with the below commands:
+
+# --dry-run: By default as soon as the command is run, the resource will be created. If you simply want to test your command , use the --dry-run=client option. This will not create the resource, instead, tell you whether the resource can be created and if your command is right.
+
+# -o yaml: This will output the resource definition in YAML format on screen.
+
+# Use the above two in combination to generate a resource definition file quickly, that you can then modify and create resources as required, instead of creating the files from scratch.
+
+
+# POD
+# Create an NGINX Pod
+kubectl run nginx --image=nginx
+# Generate POD Manifest YAML file (-o yaml). Don’t create it(–dry-run)
+kubectl run nginx --image=nginx --dry-run=client -o yaml 
+
+# Deployment
+# Create a deployment
+kubectl create deployment --image=nginx nginx
+# Generate Deployment YAML file (-o yaml). Don’t create it(–dry-run) and export the yaml contents to nginx-deployment.yaml
+kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > nginx-deployment.yaml
+# Generate Deployment with 4 Replicas
+kubectl create deployment nginx --image=nginx --replicas=4
+# You can also scale a deployment using the kubectl scale command.
+kubectl scale deployment nginx --replicas=4 
+# Another way to do this is to save the YAML definition to a file and modify
+kubectl create deployment nginx --image=nginx --dry-run=client -o yaml > nginx-deployment.yaml
+# You can then update the YAML file with the replicas or any other field before creating the deployment.
+
+# Service
+# Create a Service named redis-service of type ClusterIP to expose pod redis on port 6379
+kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml
+# (This will automatically use the pod’s labels as selectors)
+
+# Or
+
+kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml 
+# (This will not use the pods labels as selectors, instead it will assume selectors as app=redis. You cannot pass in selectors as an option. So it does not work very well if your pod has a different label set. So generate the file and modify the selectors before creating the service)
+
+ 
+
+# Create a Service named nginx of type NodePort to expose pod nginx’s port 80 on port 30080 on the nodes:
+kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml
+
+# (This will automatically use the pod’s labels as selectors, but you cannot specify the node port. You have to generate a definition file and then add the node port in manually before creating the service with the pod.)
+
+# Or
+kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml
+# (This will not use the pods labels as selectors)
+
+# Both the above commands have their own challenges. While one of it cannot accept a selector the other cannot accept a node port. I would recommend going with the `kubectl expose` command. If you need to specify a node port, generate a definition file using the same command and mIf you can't explain it simply you don't understand it well enoughanually input the nodeport before creating the service.
+
+# Filter the pods by choosing selectors
+# For example your have labels like Environment env=prod,businessunit like bu=finance and tier like tier=frontend
+# Filtering through multiple labels
+kubectl get po --selector env=prod,bu=finance,tier=frontend
+# Filtering through singular labels
+kubectl get pods --selector env=dev
+kubectl get all --selector env=prod
+# If you want to see the pods filtering through selecting labels
+kubectl get all --selector env=prod --no-headers
+# If you want to count the pods filtering through selecting labels
+kubectl get pods --selector env=dev --no-headers | wc -l
+
+# When you want to remove the taint from control plane use (-) to remove the taint
+kubectl taint no controlplane node-role.kubernetes.io/control-plane:NoSchedule-
+
+kubectl taint no node01 spray=mortein:NoSchedule
+
+kubectl label no node01 color=blue
+
+# To view Daemonsets in all namespaces
+kubectl get ds --all-namespaces
+
+# to examine Daemonset For example
+kubectl describe daemonset kube-flannel-ds --namespace=kube-flannel
+
+# To view all objects in all namespaces
+kubectl get all  --all-namespaces
+
+
+
+
+
+
+
+
+# Display Pods
+kubectl get pods
+kubectl get pods -o wide  # Print wide output of the Pod
+
+kubectl get pods -n <NAME-SPACE>     # Print Pods in particular NameSpace
+kubectl get pods -A                  # Print Pods in all namespace
+
+kubectl get pods <POD-NAME>
+kubectl get pods <POD-NAME> -o yaml  
+kubectl get pods <POD-NAME> -o json
+
+kubectl get pods --show-labels
+kubectl get pods -l app=nginx        # Print Pods with particular label
+
+# Print Details of Pod
+kubectl describe pods <POD-NAME>     
+# Editing Pod which is running
+kubectl edit pods <POD-NAME>
+kubectl describe pods nginx-pod | grep Image
+
+# Print Pod Logs
+kubectl logs <POD-NAME>
+kubectl logs <POD-NAME> -n <NAME-SPACE>
+
+# Displaying Pods by Resource Usage
+# NOTE: Metrics-Server
+# a. To run below top commands, you need to have "Metrics-Server" Installed. 
+# b. below are the high-level steps.
+
+# Installing Metrics-Server:
+git clone https://github.com/kubernetes-sigs/metrics-server.git
+kubectl apply -k metrics-server/manifests/test/
+
+# NOTE: If you encounter any Image error, try updating imagePullPolicy: Always in metrics-server/manifests/test/patch.yaml
+# Give it a minute to gather the data and then run below Top Commands:
+
+# Top Command to find the CPU and Memory Usage of Pods, Nodes and Containers:
+kubectl top pods
+kubectl top pods -A
+kubectl top pods -A --sort-by memory
+kubectl top pods -A --sort-by cpu
+kubectl top pods -n [name-space]  --sort-by cpu 
+kubectl top pods -n [name-space]  --sort-by memory
+kubectl top pods -n [name-space]  --sort-by memory > mem-usage.txt
+
+# Running operations directly on the YAML file
+# SYNTAX: kubectl [OPERATION] –f [FILE-NAME.yaml]
+
+kubectl get –f [FILE-NAME.yaml]
+kubectl describe –f [FILE-NAME.yaml]
+kubectl edit –f [FILE-NAME.yaml]
+kubectl delete –f [FILE-NAME.yaml]
+kubectl apply –f [FILE-NAME.yaml]
+
+# Deleting Pod
+kubectl delete pods <POD-NAME>
+
+
+
+# In this Demo:
+# We will deploy the sample ReplicaSet, then Validate, Scale, Edit and Cleanup.
+
+# frontend.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: frontend
+  labels:
+    app: guestbook
+    tier: frontend
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+      - name: php-redis
+        image: gcr.io/google_samples/gb-frontend:v3
+
+
+# 2. Deploy ReplicaSet
+kubectl apply -f <FILENAME.YAML>
+or 
+kubectl create -f <FILENAME.YAML>
+
+# 3. Display ReplicaSet (rs)
+kubectl get rs 
+kubectl get rs <RS-NAME> -o wide
+kubectl get rs <RS-NAME> -o yaml
+kubectl get rs -l <LABEL>     
+
+# 4. Displaying Pods 
+kubectl get pods
+kubectl get pods -l <LABEL>  
+
+# 5. Print Details of ReplicaSet
+kubectl describe rs <RS-NAME>
+
+# 6. Scaling Applications
+kubectl scale rs <RS-NAME> --replicas=[COUNT]     
+
+# 7. Editing ReplicaSet
+kubectl edit rs <RS-NAME>      
+
+# 8. Running operations directly on the YAML file
+SYNTAX: kubectl [OPERATION] –f [FILE-NAME.yaml]
+
+kubectl get –f [FILE-NAME.yaml]
+kubectl describe –f [FILE-NAME.yaml]
+kubectl edit –f [FILE-NAME.yaml]
+kubectl delete –f [FILE-NAME.yaml]
+kubectl create –f [FILE-NAME.yaml]
+
+# 9. Deleting ReplicaSet
+kubectl delete rs <RS-NAME>
+
+# N E W S E C T I O N
+# In This Exercise:
+
+# You will deploy the sample Pod and perform various operations that we use everyday.
+
+# PRE-REQ: 
+
+# a. To successfully finish this exercise, It is important to go through Pod Concept and Demo videos
+# b. You can refer to Kuberenetes Docs for help when needed.
+
+
+# STEP-1: Deploying POD:
+# Deploy sample Pod with below configuration using "kubectl run .." command.
+
+# Container Image: nginx:1.18
+# Pod Name: nginx-pod
+
+# STEP-2: Display the POD
+
+
+# a. Ensure "nginx-pod" is in "Running" state.
+# b. Display the complete details of nginx-pod by running "..describe pod.." command
+# c. Identify on which node this Pod is currently running. (HINT: Run get pods with wide option).
+
+# STEP-3: Redirect the output:
+
+# a. Display "nginx-pod" using "..get pod.." and redirect the output to "YAML" format.
+# b. Display "nginx-pod" using "..get pod.." and redirect the output to "JSON" format.
+
+
+# STEP-4: Pod Labels & Selectors:
+
+# a. Display labels of nginx-pod
+# b. Display Pod with label "component=kube-apiserver" in kube-system namespace.
+
+# STEP-5: Pod Editing:
+# a. Edit the "nginx-pod" using "kubectl edit.." command and update the container image version from 1.18 to 1.19
+# b. Ensure the "nginx-pod" is running successfully with container image 1.19
+
+
+# STEP-6: Pod Logs:
+# a. Display the "nginx-pod" logs
+# b. Display logs of "kube-scheduler-master" Pod. This Pod runs in "kube-system" namespace.
+
+# STEP-7: Resource Usage:
+
+# a. Ensure Metrics-Server is running inside your cluster.
+# b. Display the CPU and Memory usage of "nginx-pod"
+# c. Display resource usage of Pods in ALL namespaces
+# d. Display resource usage of Pods in "kube-system" namespace and sort the output by cpu usage
+# e. Display resource usage of Pods in "kube-system" namespace and sort the output by memory usage
+# f. Display resource usage of Pods in "kube-system" namespace. Sort the output by memory usage and save the o/p to a file
+
+
+# STEP-8: Delete the Pod:
+
+# a. Delete the "nginx-pod"
+# b. Ensure there are no Pods running (in the default namespace).
+
+
+
+# New Section
+# Configmaps
+kubectl get configmaps
+kubectl create configmap  webapp-config-map --from-literal=APP_COLOR=darkblue --from-literal=APP_OTHER=disregard
+
+
+# New Section
+# Secrets
+kubectl get secrets
+kubectl describe secrets dashboard-token
+
+kubectl create secret generic db-secret --from-literal=DB_Host=sql01 --from-literal=DB_User=root --from-literal=DB_Password=password123
+kubectl describe secrets db-secret
+kubectl run webapp-pod --image=kodekloud/simple-webapp-mysql --dry-run=client -o yaml > webapp-pod.yaml
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: webapp-pod
+  name: webapp-pod
+spec:
+  containers:
+  - image: kodekloud/simple-webapp-mysql
+    name: webapp-pod
+    envFrom:
+    - secretRef:
+        name: db-secret
+
+---
+
+Important Update: Kubernetes the Hard Way
+Installing Kubernetes the hard way can help you gain a better understanding of putting together the different components manually.
+
+An optional series on this is available at our youtube channel here:
+
+https://www.youtube.com/watch?v=uUupRagM7m0&list=PL2We04F3Y_41jYdadX55fdJplDvgNGENo
+
+The GIT Repo for this tutorial can be found here: https://github.com/mmumshad/kubernetes-the-hard-way
+

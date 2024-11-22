@@ -1,0 +1,24 @@
+# Version 0.1 -10102023
+# Important Information on k8s
+
+# Kubernetes official website - This website contains documentation for the current and previous 4 versions of Kubernetes
+# 1.24
+https://v1-24.docs.kubernetes.io/docs/home/supported-doc-versions/
+# 1.25
+https://v1-25.docs.kubernetes.io/docs/home/supported-doc-versions/
+# 1.26
+https://v1-26.docs.kubernetes.io/docs/home/supported-doc-versions/
+# 1.27
+https://v1-27.docs.kubernetes.io/docs/home/supported-doc-versions/
+# 1.28
+https://kubernetes.io/docs/home/supported-doc-versions/
+
+
+# Verified installation Blog for 1.28
+https://www.linuxtechi.com/install-kubernetes-on-ubuntu-22-04/
+https://nvtienanh.info/blog/cai-dat-kubernetes-cluster-tren-ubuntu-server-22-04
+
+
+# Reference:
+https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands
+https://kubernetes.io/docs/reference/kubectl/conventions/

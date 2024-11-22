@@ -1,0 +1,274 @@
+# version 0.3 - 10192023
+
+# This Installation file has the steps to install K8S Cluster 1.28 on UBUNTU OS 22.04
+
+# Must fulfill below prerequesties
+# Controller Node must have minimum of 02 CPU and 4Gb of Memory
+# Worker Node must have minimum of 01 CPU with 2 Gb of Memory
+# Unique hostname, MAC address, and product_uuid for every node.
+# https://kubernetes.io/docs/reference/networking/ports-and-protocols/ - Review the ports required to open for k8s cluster
+
+# VM OS used = Ubuntu 22.04 for all nodes
+# K8S Cluster Version = 1.28.2 (available in Oct 2023)
+
+# VM Nodes or Server IP range used = 192.168.100.0/24 (256 static ips - 254 useable)
+# K8S Internal IP Range taken = 10.244.0.0/16
+
+# Total controllers considered in this project
+# Minimun CPU/Memory required are 2 CPU / 2 Gib
+# I have took 2 CPU / 4 Gib for all contol plane nodes
+
+# controller1.13infotech.com - controllerplane - 01
+
+
+# Total Worker Nodes considered in this project
+# Minimun CPU/Memory required are 1 CPU / 1 Gib
+# I have took 2 CPU / 4 Gib for all woker nodes
+# wn01.13infotech.com - Worker Node 01
+# wn02.13infotech.com - Worker Node 02
+# wn03.13infotech.com - Worker Node 03
+
+# Firewall Rules (Ingress)
+# Master Node: 2379,6443,10250,10251,10252 
+# Worker Node: 10250,30000-32767
+
+# Common commands need to know for all cluster nodes
+
+# To Gain the root access on Ubuntu 22.x
+sudo -i
+
+# NOT Mandatory. For better visibility.
+# Add below lines to ~/.bashrc
+# Master Node:
+PS1="\e[0;33m[\u@\h \W]\$ \e[m "
+
+# Worker Node:
+PS1="\e[0;36m[\u@\h \W]\$ \e[m "
+
+# To update and upgarde Ubuntu 22.x Packages before k8s cluster installation
+sudo apt update && sudo apt upgrade -y
+
+# To Check the DNS Status on Ubuntu 22.x
+resolvectl status
+
+# To edit the DNS Servers on Ubuntu 22.x
+sudo vi /etc/netplan/00-installer-config.yaml
+
+#To Apply the DNS Changes
+sudo netplan apply
+
+# update all nodes to check if the OS is already updated and can download system updates from Internet
+sudo apt update && sudo apt upgrade -y
+
+# First set the hostname of all the nodes
+# I own the domain 13infotech.com thats why I have used here, you can use any domain that you own
+sudo hostnamectl set-hostname "controller1.13infotech.com"
+sudo hostnamectl set-hostname "wn01.13infotech.com"
+sudo hostnamectl set-hostname "wn02.13infotech.com"
+sudo hostnamectl set-hostname "wn03.13infotech.com"
+
+# Optional Step
+exec bash
+
+# Sample for /etc/hosts on all nodes
+# You must copy all these enteries on all nodes - control planes,HA Proxy Node,Woker Nodes,Any Laptop or Jump Server using to access all these nodes.
+sudo vi /etc/hosts
+
+192.168.100.100 controller1 controller1.13infotech.com
+192.168.100.98 wn01 wn01.13infotech.com
+192.168.100.97 wn02 wn02.13infotech.com
+192.168.100.96 wn02 wn02.13infotech.com
+
+# Mandatory steps to turn off the swap on all nodes
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# Mandatory step to turn off the swap manually else upon restart of any node, swap will be active again
+sudo vim /etc/fstab
+add #/swap.img   #add # infront of /swap.img to make it permanently disabled
+# Restart the node after making this. 
+
+# once done all steps are completed on all nodes, please reboot all nodes
+sudo reboot
+
+# After restart check again to see if swap is disabled by executing these commands
+sudo mount -a
+free -h
+
+# Mandatory steps to turn off the swap on all nodes excluding controller3.13infotech.com
+
+# Load the following kernel modules on all the nodes
+sudo tee /etc/modules-load.d/containerd.conf <<EOF
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Set the following Kernel parameters for Kubernetes
+sudo tee /etc/sysctl.d/kubernetes.conf <<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+# Reload the above changes, run
+sudo sysctl --system
+
+# Install the Containerd Runtime
+sudo apt install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
+# Enable the docker repository
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/docker.gpg
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+# Now, run following apt command to install containerd
+sudo apt update
+sudo apt install -y containerd.io
+# Configure containerd so that it starts using systemd as cgroup.
+containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+# Restart and enable containerd service
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+# Add Apt Repository for Kubernetes - Google deprecating repositories (Choose either Google or Kubernetes New long term repository)
+sudo apt-get install -y apt-transport-https ca-certificates curl
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/kubernetes-xenial.gpg
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+# OR
+
+# Kubernetes package repositories
+# These instructions are for Kubernetes 1.28.x
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Install Kubectl, Kubeadm and Kubelet
+sudo apt update
+# Optional Commands - Version Specific
+# apt-cache madison kubeadm
+# sudo apt install -y kubelet=1.24.0-00 kubeadm=1.24.0-00 kubectl=1.24.0-00
+sudo apt install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# Initialize Kubernetes Cluster with Kubeadm. Run the following Kubeadm command on the master node only.
+sudo kubeadm init --control-plane-endpoint=controller1.13infotech.com
+
+# OR
+
+# Alternative Method if you want to publish the IP range for POD Network while intitalizing the Control Plane
+sudo kubeadm init \
+  --pod-network-cidr=10.10.0.0/16 \
+  --control-plane-endpoint=controller1.13infotech.com
+
+# to start interacting with cluster, run following commands on the master node
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# when you want your laptop or other machine needs to access the cluster, you need to copy all contents of kube config on your local machine
+# and add permission to  600 to make it workable
+chmod 600 config (if config file is being copied to any other machines)
+
+# next, try to run following kubectl commands to view cluster and node status
+kubectl cluster-info
+kubectl get nodes
+
+# Join another control node to the Cluster. check your own string. DO NOT copy this whole string to activate your node.
+kubeadm join controller1.13infotech.com:6443 --token ir8qv3.m18ok6a0skorkk71 \
+	--discovery-token-ca-cert-hash sha256:c045fb2a1d34005258bf4d130374613f8f6100d058e32a337eb3e1ec87693c62 \
+	--control-plane
+    
+# Join another node to the Cluster. check your own string. DO NOT copy this whole string to activate your node.
+kubeadm join controller1.13infotech.com:6443 --token ir8qv3.m18ok6a0skorkk71 \
+	--discovery-token-ca-cert-hash sha256:c045fb2a1d34005258bf4d130374613f8f6100d058e32a337eb3e1ec87693c62
+
+
+# For any reason, if kubeadm joining is failed. use this below command to reset the kubeadm activation steps process
+kubeadm reset
+
+
+# Check the nodes status from master node using kubectl command
+kubectl get nodes
+
+# As we can see nodes status is ‘NotReady’, so to make it active.
+# We must install CNI (Container Network Interface) or network add-on plugins like Calico, Flannel and Weave-net
+# To edit and add the POD Network, download the manifest calico yaml file via option -O
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml -O
+# edit calico.yaml that are now downloaded on your controller and search CALICO_IP_V4POOL_CIDR
+# unhash the values and replace the same CIDR that you have used while initializing the controller
+- name: CALICO_IPV4POOL_CIDR
+  value: '10.244.0.0/16'
+# save the file and then enter the following command
+kubectl apply -f calico.yaml
+# Verify the status of pods in kube-system namespace
+kubectl get pods -n kube-system
+# Perfect, check the nodes status as well
+kubectl get nodes
+# Test Your Kubernetes Cluster Installation
+kubectl create deployment nginx-app --image=nginx --replicas=2
+# Expose the deployment as NodePort
+kubectl expose deployment nginx-app --type=NodePort --port=80
+# Run following commands to view service status
+kubectl get svc nginx-app
+kubectl describe svc nginx-app
+# Use following curl command to access nginx based application
+curl http://192.168.100.100:31246 # example only, please replace the static IP of your actual controller or node server
+
+
+# In this demo:
+# a. We will validate the K8s cluster configured using kubeadm in the previous lecture.
+# b. At the end, we will deploy same deployment and will ensure everything is working as it should be.
+
+# 1. Validating CMD Tools:  kubeadm & kubectl:
+# Ensure kubeadm and kubectl version is as per your cluster setup
+
+# 1a). Checking "kubeadm" version:
+kubeadm version
+
+# 1b). Checking "kubectl" version:
+kubectl version
+
+# 2. Validating Cluster Nodes:
+# Ensure all nodes including Master and Worker nodes are "Ready":
+
+kubectl get nodes 
+kubectl get nodes –o wide
+
+
+# 3. Validating Kubernetes Components:
+# Ensure all K8s Master node components are in "Running" status:
+kubectl get pods –n kube-system
+kubectl get pods –n kube-system -o wide
+
+# 4. Validating Services:  Containerd & Kubelet:
+# Ensure Containerd and Kubelet Services are "Active(Running) and Enabled on all nodes
+
+# 4a). Checking Containerd Service Status:
+
+systemctl status containerd
+
+# 4b). Checking Docker Kubelet Status:
+
+systemctl status kubelet
+
+# 5. Deploying Test Deployment:
+
+# 5a). Deploying the sample "nginx" deployment:
+kubectl apply -f https://k8s.io/examples/controllers/nginx-deployment.yaml
+
+# 5b). Validate Deployment:
+kubectl get deploy
+kubectl get deploy –o wide
+
+# 5c). Validating Pods are in "Running" status:
+kubectl get pods 
+kubectl get pods –o wide
+
+# 5d). Validate containers are running on respective worker nodes:
+container ps
+
+# 5e). Delete Deployment:
+
+kubectl delete -f https://k8s.io/examples/controllers/nginx-deployment.yaml
+

@@ -1,0 +1,88 @@
+# Version 0.2 - 10192023
+# How to setup NGINX Ingress Controller on Kubernetes Cluster in a BAREMETAL WAY
+
+# Nginx Controller Version used v1.8.2
+# https://github.com/kubernetes/ingress-nginx
+# File used in this project
+# https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+
+# Step 1,  On Control Plane, execute below command
+# This will deploy the ingress controller as Deployment
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+
+
+# Step 1, Once Step 1 completes, run this command to check deployment status
+kubectl get po,svc,ingressclass -n=ingress-nginx
+
+# This is sample Yaml file for nginx-controller-rules.yaml
+vi nginx-controller-rules.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-myservicea
+spec:
+  rules:
+  - host: web1.13infotech.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-app
+            port:
+              number: 80
+  ingressClassName: nginx
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: ingress-myserviceb
+#spec:
+#  rules:
+#  - host: myserviceb.foo.org
+#    http:
+#      paths:
+#      - path: /
+#        pathType: Prefix
+#        backend:
+#          service:
+#            name: myserviceb
+# ingressClassName: nginx
+
+# Run this command to apply nginx-controller-rules through declarative way
+
+kubectl apply -f nginx-controller-rules.yaml
+
+# Soon after applying nginx-controller-rules, ingress service will be created and ingress IP will be assigned. 
+kubectl get ing
+
+# You will see the output like this
+NAME                 CLASS   HOSTS                 ADDRESS      PORTS   AGE
+ingress-myservicea   nginx   web1.13infotech.com   10.6.1.222   80      103s
+
+# To get more details, type below command
+kubectl describe ing ingress-myservicea
+
+
+# Create Second application as httpd-app as deployment 2 with 2 Replicas 
+kubectl create deploy httpd-app --image=httpd --replicas=2
+
+# Output will be like this
+kubectl get deploy
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+httpd-app   2/2     2            2           2m4s
+nginx-app   2/2     2            2           3d2h
+
+# All Services that needs to be published must be created as ClusterIP after implementing Nginx Controller
+kubectl expose deploy nginx-app --type=ClusterIP --port=80
+kubectl expose deploy httpd-app --type=ClusterIP --port=80
+
+
+# Since this deployment is NGINX Ingress Controller on Kubernetes Cluster in a BAREMETAL WAY
+# Therefore LOAD BALANCER will not be created and we need to expose NodePort to HAPROXY in order to publish Application to Load Balancer Public IP
+
+# Question can come in mind from where to get NodePort?
+# Run this command
+

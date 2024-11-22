@@ -1,0 +1,28 @@
+
+# 1. Pod YAML with Environment Variables
+
+# nginx-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx
+    tier: dev
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx:1.18
+    env:
+    - name: DEMO_GREETING
+      value: "Hello from the environment"
+    - name: DEMO_FAREWELL
+      value: "Such a sweet sorrow"
+
+
+# 2. Deploy Pods
+~~~~~~~~~~~~~~~~~
+kubectl apply -f <FILENAME.YAML>
+(or) 
+kubectl create -f <FILENAME.YAML>
+

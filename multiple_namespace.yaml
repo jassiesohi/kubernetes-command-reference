@@ -1,0 +1,19 @@
+
+# To create Multiple Name Spaces through 01 Yaml File
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: training
